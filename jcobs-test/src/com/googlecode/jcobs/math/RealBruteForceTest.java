@@ -1,6 +1,7 @@
 package com.googlecode.jcobs.math;
 
 import java.math.BigDecimal;
+import java.util.Random;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -28,23 +29,23 @@ public class RealBruteForceTest {
 	}
 
 	@Test
+	public void testAdd_0001_to_10_BigDecimal() {
+		compareOperationsBigDecimal(100_00, 3, Operation.ADD);
+	}
+
+	@Test
 	public void testSubtract_0001_to_10_BigDecimal() {
 		compareOperationsBigDecimal(100_00, 3, Operation.SUBTRACT);
 	}
-	
+
 	@Test
 	public void testMultiply_0001_to_10_BigDecimal() {
 		compareOperationsBigDecimal(100_00, 3, Operation.MULTIPLY);
 	}
-	
+
 	@Test
 	public void testDivide_0001_to_10_BigDecimal() {
 		compareOperationsBigDecimal(100_00, 3, Operation.DIVIDE);
-	}
-	
-	@Test
-	public void testAdd_0001_to_10_BigDecimal() {
-		compareOperationsBigDecimal(100_00, 3, Operation.ADD);
 	}
 
 	@Test
@@ -67,6 +68,90 @@ public class RealBruteForceTest {
 		compareOperationsDouble(100_00, 2, Operation.DIVIDE);
 	}
 
+	@Test
+	public void testAdd_1000_Random_Numbers_BigDecimal() {
+		Random random = new Random(System.currentTimeMillis());
+		BigDecimal[] numbers = new BigDecimal[1000];
+		for (int i = 0; i < numbers.length; ++i) {
+		 	numbers[i] = nextBigDecimal(random, 14, 4);
+		}
+		for (int i = 0; i < numbers.length; ++i) {
+			for (int j = 0; j < numbers.length; ++j) {
+				compareBigDecimalOperation(numbers[i], numbers[j], Operation.ADD);
+			}
+		}
+	}
+	
+	@Test
+	public void testSubtract_1000_Random_Numbers_BigDecimal() {
+		Random random = new Random(System.currentTimeMillis());
+		BigDecimal[] numbers = new BigDecimal[1000];
+		for (int i = 0; i < numbers.length; ++i) {
+			numbers[i] = nextBigDecimal(random, 14, 4);
+		}
+		for (int i = 0; i < numbers.length; ++i) {
+			for (int j = 0; j < numbers.length; ++j) {
+				compareBigDecimalOperation(numbers[i], numbers[j], Operation.SUBTRACT);
+			}
+		}
+	}
+	
+	@Test
+	public void testMultiply_1000_Random_Numbers_BigDecimal() {
+		Random random = new Random(System.currentTimeMillis());
+		BigDecimal[] numbers = new BigDecimal[1000];
+		for (int i = 0; i < numbers.length; ++i) {
+			numbers[i] = nextBigDecimal(random, 9, 4);
+		}
+		for (int i = 0; i < numbers.length; ++i) {
+			for (int j = 0; j < numbers.length; ++j) {
+				compareBigDecimalOperation(numbers[i], numbers[j], Operation.MULTIPLY);
+			}
+		}
+	}
+	
+	@Test
+	public void testDivide_1000_Random_Numbers_BigDecimal() {
+		Random random = new Random(System.currentTimeMillis());
+		BigDecimal[] numbers = new BigDecimal[1000];
+		for (int i = 0; i < numbers.length; ++i) {
+			numbers[i] = nextBigDecimal(random, 14, 4);
+		}
+		for (int i = 0; i < numbers.length; ++i) {
+			for (int j = 0; j < numbers.length; ++j) {
+				compareBigDecimalOperation(numbers[i], numbers[j], Operation.DIVIDE);
+			}
+		}
+	}
+
+	private BigDecimal nextBigDecimal(Random random, int precision, int scale) {
+		BigDecimal raw = new BigDecimal(random.nextLong() % pow10(precision));
+		if (scale != 0) {
+			return raw.movePointLeft(scale);
+		}
+		return raw;
+	}
+
+	// @Test
+	// public void testAdd_00001_to_1000_Double() {
+	// compareOperationsDouble(1000_0000, 4, Operation.ADD);
+	// }
+	//
+	// @Test
+	// public void testSubtract_00001_to_1000_Double() {
+	// compareOperationsDouble(1000_0000, 4, Operation.SUBTRACT);
+	// }
+	//
+	// @Test
+	// public void testMultiply_00001_to_1000_Double() {
+	// compareOperationsDouble(1000_0000, 4, Operation.MULTIPLY);
+	// }
+	//
+	// @Test
+	// public void testDivide_00001_to_1000_Double() {
+	// compareOperationsDouble(1000_0000, 4, Operation.DIVIDE);
+	// }
+
 	private static void compareOperationsBigDecimal(int limit, int decimals, Operation op) {
 		BigDecimal[] numbers = new BigDecimal[limit + 1];
 		for (int i = 0; i <= limit; ++i) {
@@ -75,25 +160,30 @@ public class RealBruteForceTest {
 		long skipped = 0L;
 		for (int i = 0; i <= limit; ++i) {
 			for (int j = 0; j <= limit; ++j) {
-				if (op == Operation.DIVIDE && BigDecimal.ZERO.compareTo(numbers[j]) == 0) {
+				if (!compareBigDecimalOperation(numbers[i], numbers[j], op)) {
 					++skipped;
-					continue;
-				}
-				BigDecimal expected;
-				try {
-					expected = operateBigDecimal(numbers[i], numbers[j], op);
-				} catch (ArithmeticException ex) {
-					++skipped;
-					continue;
-				}
-				BigDecimal actual = operateReal(numbers[i], numbers[j], op);
-				if (!expected.equals(actual)) {
-					Assert.fail(String.format("Expected='%s', actual='%s', Num1='%s', Num2='%s'", //
-							expected.toString(), actual.toString(), numbers[i].toString(), numbers[j].toString()));
 				}
 			}
 		}
 		System.out.println("Skipped operations: " + skipped + ".");
+	}
+
+	private static boolean compareBigDecimalOperation(BigDecimal n1, BigDecimal n2, Operation op) {
+		if (op == Operation.DIVIDE && BigDecimal.ZERO.compareTo(n2) == 0) {
+			return false;
+		}
+		BigDecimal expected;
+		try {
+			expected = operateBigDecimal(n1, n2, op);
+		} catch (ArithmeticException ex) {
+			return false;
+		}
+		BigDecimal actual = operateReal(n1, n2, op);
+		if (!expected.equals(actual)) {
+			Assert.fail(String.format("Expected='%s', actual='%s', Num1='%s', Num2='%s'", //
+					expected.toString(), actual.toString(), n1.toString(), n2.toString()));
+		}
+		return true;
 	}
 
 	private static void compareOperationsDouble(int limit, int decimals, Operation op) {
@@ -119,8 +209,8 @@ public class RealBruteForceTest {
 		System.out.println("Skipped operations: " + skipped + ".");
 	}
 
-	private static double pow10(int decimals) {
-		double res = 1;
+	private static long pow10(int decimals) {
+		long res = 1;
 		if (decimals >= 0) {
 			for (int i = 0; i < decimals; ++i) {
 				res *= 10;
@@ -208,6 +298,9 @@ public class RealBruteForceTest {
 	}
 
 	private static BigDecimal removeZerosToTheRight(BigDecimal value) {
+		if (value.compareTo(BigDecimal.ZERO) == 0) {
+			return BigDecimal.ZERO;
+		}
 		if (value.scale() > 0) {
 			value = value.stripTrailingZeros();
 			if (value.scale() < 0) {
@@ -220,5 +313,5 @@ public class RealBruteForceTest {
 	private static enum Operation {
 		ADD, SUBTRACT, MULTIPLY, DIVIDE
 	}
-
+	
 }

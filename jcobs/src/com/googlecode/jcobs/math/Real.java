@@ -1,6 +1,7 @@
 package com.googlecode.jcobs.math;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.math.RoundingMode;
 
 /**
@@ -12,8 +13,8 @@ public class Real extends Number implements Comparable<Real> {
 
 	private static final long serialVersionUID = -2447989298519065798L;
 
-	private long numerator;
-	private long denominator;
+	private final long numerator;
+	private final long denominator;
 
 	public Real(long numerator, long denominator) {
 		this(numerator, denominator, false);
@@ -21,35 +22,61 @@ public class Real extends Number implements Comparable<Real> {
 
 	private Real(long numerator, long denominator, boolean normalized) {
 		if (denominator == 0L) {
-			throw new IllegalArgumentException("Denominator cannot be zero.");
+			throw new ArithmeticException("Division by zero.");
+		}
+		if (!normalized) {
+			if (denominator < 0L) {
+				// Denominator cannot be negative
+				numerator = -numerator;
+				denominator = -denominator;
+			}
+			if (numerator == 0L) {
+				denominator = 1L;
+			} else if (denominator != 1L) {
+				long gcd = gcd(abs(numerator), abs(denominator));
+				if (gcd > 1L) {
+					numerator /= gcd;
+					denominator /= gcd;
+				}
+			}
 		}
 		this.numerator = numerator;
 		this.denominator = denominator;
-		if (!normalized) {
-			normalize();
-		}
 	}
 
-	private void normalize() {
-		if (denominator < 0L) {
-			// Denominator cannot be negative
-			numerator = -numerator;
-			denominator = -denominator;
+	private static final BigInteger BIG_MAX_LONG = BigInteger.valueOf(Long.MAX_VALUE);
+	private static final BigInteger BIG_MIN_LONG = BigInteger.valueOf(Long.MIN_VALUE);
+
+	private Real(BigInteger numerator, BigInteger denominator, boolean normalized) {
+		int comparisonDen = denominator.compareTo(BigInteger.ZERO);
+		if (comparisonDen == 0) {
+			throw new ArithmeticException("Division by zero.");
 		}
-		if (numerator == 0L && denominator != 0L) {
-			denominator = 1L;
+		if (!normalized) {
+			// TODO Maybe this comparison is unnecessary.
+			if (comparisonDen < 0) {
+				// Denominator cannot be negative
+				numerator = numerator.negate();
+				denominator = denominator.negate();
+			}
+			if (numerator.compareTo(BigInteger.ZERO) == 0) {
+				denominator = BigInteger.ONE;
+			} else if (denominator.compareTo(BigInteger.ONE) != 0) {
+				BigInteger gcd = numerator.gcd(denominator);
+				if (gcd.compareTo(BigInteger.ONE) > 0) {
+					numerator = numerator.divide(gcd);
+					denominator = denominator.divide(gcd);
+				}
+			}
 		}
-		if (denominator == 1L) {
-			// It's already normalized
-			return;
+		if (numerator.compareTo(BIG_MAX_LONG) > 0 || numerator.compareTo(BIG_MIN_LONG) < 0) {
+			throw new ArithmeticException("Numeric overflow");
 		}
-		long gcd = gcd(abs(numerator), abs(denominator));
-		if (gcd == 1L) {
-			// It's already normalized
-			return;
+		if (denominator.compareTo(BIG_MAX_LONG) > 0 || denominator.compareTo(BIG_MIN_LONG) < 0) {
+			throw new ArithmeticException("Numeric overflow");
 		}
-		numerator /= gcd;
-		denominator /= gcd;
+		this.numerator = numerator.longValue();
+		this.denominator = denominator.longValue();
 	}
 
 	private long abs(long number) {
@@ -60,6 +87,7 @@ public class Real extends Number implements Comparable<Real> {
 		}
 	}
 
+	// TODO Optimize!
 	public static long gcd(long p, long q) {
 		if (q == 0) {
 			return p;
@@ -77,7 +105,8 @@ public class Real extends Number implements Comparable<Real> {
 	}
 
 	public Real(BigDecimal value) {
-		this(value.multiply(new BigDecimal(pow10(value.scale()))).longValue(), pow10(value.scale()));
+		// TODO Use movePointRight
+		this(value.multiply(new BigDecimal(pow10(value.scale()))).longValue(), pow10(value.scale()), false);
 	}
 
 	private static long pow10(int exponent) {
@@ -96,14 +125,27 @@ public class Real extends Number implements Comparable<Real> {
 		return denominator;
 	}
 
-	// TODO Testar limites! Pode ser necessário usar o MMC.
 	public Real add(Real augend) {
 		if (this.denominator == augend.denominator) {
-			return new Real(this.numerator + augend.numerator, this.denominator);
+			if (overIntLimits(this.numerator, augend.numerator)) {
+				BigInteger num = BigInteger.valueOf(this.numerator).add(BigInteger.valueOf(augend.numerator));
+				return new Real(num, BigInteger.valueOf(this.denominator), false);
+			} else {
+				return new Real(this.numerator + augend.numerator, this.denominator, false);
+			}
+		} else {
+			if (overIntLimits(this.numerator, this.denominator, augend.numerator, augend.denominator)) {
+				BigInteger den = BigInteger.valueOf(this.denominator).multiply(BigInteger.valueOf(augend.denominator));
+				BigInteger v1 = BigInteger.valueOf(this.numerator).multiply(BigInteger.valueOf(augend.denominator));
+				BigInteger v2 = BigInteger.valueOf(this.denominator).multiply(BigInteger.valueOf(augend.numerator));
+				BigInteger num = v1.add(v2);
+				return new Real(num, den, false);
+			} else {
+				long den = this.denominator * augend.denominator;
+				long num = this.numerator * augend.denominator + this.denominator * augend.numerator;
+				return new Real(num, den, false);
+			}
 		}
-		long den = this.denominator * augend.denominator;
-		long num = this.numerator * augend.denominator + this.denominator * augend.numerator;
-		return new Real(num, den);
 	}
 
 	public Real add(BigDecimal augend) {
@@ -114,14 +156,8 @@ public class Real extends Number implements Comparable<Real> {
 		return add(new Real(augend));
 	}
 
-	// TODO Testar limites! Pode ser necessário usar o MMC mesmo.
 	public Real subtract(Real subtrahend) {
-		if (this.denominator == subtrahend.denominator) {
-			return new Real(this.numerator - subtrahend.numerator, this.denominator);
-		}
-		long den = this.denominator * subtrahend.denominator;
-		long num = this.numerator * subtrahend.denominator - this.denominator * subtrahend.numerator;
-		return new Real(num, den);
+		return add(subtrahend.negate());
 	}
 
 	public Real subtract(BigDecimal subtrahend) {
@@ -133,9 +169,29 @@ public class Real extends Number implements Comparable<Real> {
 	}
 
 	public Real multiply(Real multiplicand) {
-		long num = this.numerator * multiplicand.numerator;
-		long den = this.denominator * multiplicand.denominator;
-		return new Real(num, den);
+		if (overIntLimits(this.numerator, multiplicand.numerator, this.denominator, multiplicand.denominator)) {
+			BigInteger num = BigInteger.valueOf(this.numerator).multiply(BigInteger.valueOf(multiplicand.numerator));
+			BigInteger den = BigInteger.valueOf(this.denominator).multiply(BigInteger.valueOf(multiplicand.denominator));
+			return new Real(num, den, false);
+		} else {
+			long num = this.numerator * multiplicand.numerator;
+			long den = this.denominator * multiplicand.denominator;
+			return new Real(num, den, false);
+		}
+	}
+
+	private static boolean overIntLimits(long a, long b) {
+		if (a > Integer.MAX_VALUE || a < Integer.MIN_VALUE) {
+			return true;
+		}
+		if (b > Integer.MAX_VALUE || b < Integer.MIN_VALUE) {
+			return true;
+		}
+		return false;
+	}
+
+	private static boolean overIntLimits(long a, long b, long c, long d) {
+		return overIntLimits(a, b) || overIntLimits(c, d);
 	}
 
 	public Real multiply(BigDecimal multiplicand) {
@@ -147,12 +203,7 @@ public class Real extends Number implements Comparable<Real> {
 	}
 
 	public Real divide(Real divisor) {
-		if (divisor.denominator == 0L) {
-			throw new ArithmeticException("Division by zero.");
-		}
-		long num = this.numerator * divisor.denominator;
-		long den = this.denominator * divisor.numerator;
-		return new Real(num, den);
+		return multiply(divisor.invert());
 	}
 
 	public Real divide(BigDecimal divisor) {
@@ -222,6 +273,7 @@ public class Real extends Number implements Comparable<Real> {
 		return result;
 	}
 
+	// TODO Tratar overflows!
 	@Override
 	public int compareTo(Real other) {
 		if (this.denominator == other.denominator) {
@@ -240,6 +292,7 @@ public class Real extends Number implements Comparable<Real> {
 
 	@Override
 	public String toString() {
+		// TODO Show value also as decimal
 		if (isInteger()) {
 			return Long.toString(numerator);
 		} else {
@@ -287,9 +340,32 @@ public class Real extends Number implements Comparable<Real> {
 		return new Real(-numerator, denominator, true);
 	}
 
+	public Real invert() {
+		return new Real(denominator, numerator, true);
+	}
+	
+	public Real max(Real other) {
+		if (this.greaterThan(other)) {
+			return this;
+		} else {
+			return other;
+		}
+	}
+	
+	public Real min(Real other) {
+		if (this.lessThan(other)) {
+			return this;
+		} else {
+			return other;
+		}
+	}
+
 	public Real round(int scale, RoundingMode roundingMode) {
 		BigDecimal bd = toBigDecimal(scale, roundingMode);
 		return new Real(bd);
 	}
-
+	
+	// TODO Implement remainder(Real): Real
+	// TODO Implement divideAndremainder(Real): Real[]
+	
 }
