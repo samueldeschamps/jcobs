@@ -53,7 +53,6 @@ public class Real extends Number implements Comparable<Real> {
 			throw new ArithmeticException("Division by zero.");
 		}
 		if (!normalized) {
-			// TODO Maybe this comparison is unnecessary.
 			if (comparisonDen < 0) {
 				// Denominator cannot be negative
 				numerator = numerator.negate();
@@ -87,12 +86,13 @@ public class Real extends Number implements Comparable<Real> {
 		}
 	}
 
-	// TODO Optimize!
 	public static long gcd(long p, long q) {
-		if (q == 0) {
-			return p;
+		while (q != 0) {
+			long aux = q;
+			q = p % q;
+			p = aux;
 		}
-		return gcd(q, p % q);
+		return p;
 	}
 
 	public Real(long value) {
@@ -105,8 +105,10 @@ public class Real extends Number implements Comparable<Real> {
 	}
 
 	public Real(BigDecimal value) {
-		// TODO Use movePointRight
-		this(value.multiply(new BigDecimal(pow10(value.scale()))).longValue(), pow10(value.scale()), false);
+		this(//
+				(value.scale() < 0 ? value : value.movePointRight(value.scale())).longValue(), //
+				value.scale() < 0 ? 1 : pow10(value.scale()), //
+				false);
 	}
 
 	private static long pow10(int exponent) {
@@ -273,15 +275,20 @@ public class Real extends Number implements Comparable<Real> {
 		return result;
 	}
 
-	// TODO Tratar overflows!
 	@Override
 	public int compareTo(Real other) {
 		if (this.denominator == other.denominator) {
 			return Long.compare(this.numerator, other.numerator);
 		} else {
-			long thisValue = this.numerator * other.denominator;
-			long otherValue = other.numerator * this.denominator;
-			return Long.compare(thisValue, otherValue);
+			if (overIntLimits(this.numerator, this.denominator, other.numerator, other.denominator)) {
+				BigInteger thisValue = BigInteger.valueOf(this.numerator).multiply(BigInteger.valueOf(other.denominator));
+				BigInteger otherValue = BigInteger.valueOf(other.numerator).multiply(BigInteger.valueOf(this.denominator));
+				return thisValue.compareTo(otherValue);
+			} else {
+				long thisValue = this.numerator * other.denominator;
+				long otherValue = other.numerator * this.denominator;
+				return Long.compare(thisValue, otherValue);
+			}
 		}
 	}
 
@@ -343,7 +350,7 @@ public class Real extends Number implements Comparable<Real> {
 	public Real invert() {
 		return new Real(denominator, numerator, true);
 	}
-	
+
 	public Real max(Real other) {
 		if (this.greaterThan(other)) {
 			return this;
@@ -351,7 +358,7 @@ public class Real extends Number implements Comparable<Real> {
 			return other;
 		}
 	}
-	
+
 	public Real min(Real other) {
 		if (this.lessThan(other)) {
 			return this;
@@ -364,8 +371,8 @@ public class Real extends Number implements Comparable<Real> {
 		BigDecimal bd = toBigDecimal(scale, roundingMode);
 		return new Real(bd);
 	}
-	
+
 	// TODO Implement remainder(Real): Real
 	// TODO Implement divideAndremainder(Real): Real[]
-	
+
 }

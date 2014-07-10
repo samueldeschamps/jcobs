@@ -284,6 +284,54 @@ public class RealTest {
 		Collections.sort(list);
 		Assert.assertEquals("[-500000, -50, -1, -1/2, 0, 1/4, 1/3, 1/2, 1, 1000/999, 1000/999, 3/2, 2, 123456/7]", list.toString());
 	}
+	
+	@Test
+	public void testCompareTo_MaxInt_MinInt() {
+		List<Real> list = new ArrayList<>();
+		list.add(new Real(Integer.MAX_VALUE, 1));
+		list.add(new Real(Integer.MIN_VALUE, 1));
+		list.add(new Real(1, 2));
+		list.add(new Real(1, 3));
+		list.add(new Real(1, 4));
+		list.add(new Real(2, 1));
+		list.add(new Real(3, 2));
+		list.add(new Real(-1000000, 2));
+		list.add(new Real(1, 1));
+		list.add(new Real(1000, 999));
+		list.add(new Real(1000, 999));
+		list.add(new Real(-1, 2));
+		list.add(new Real(-1, 1));
+		list.add(new Real(-100, 2));
+		list.add(new Real(123456, 7));
+		list.add(new Real(0, 7));
+		Collections.sort(list);
+		Assert.assertEquals("[-2147483648, -500000, -50, -1, -1/2, 0, 1/4, 1/3, 1/2, 1, 1000/999, 1000/999, 3/2, 2, 123456/7, 2147483647]", list.toString());
+	}
+	
+	@Test
+	public void testCompareTo_MaxLong_MinLong() {
+		List<Real> list = new ArrayList<>();
+		list.add(new Real(Integer.MAX_VALUE, 1));
+		list.add(new Real(1, 2));
+		list.add(new Real(1, 3));
+		list.add(new Real(1, 4));
+		list.add(new Real(Integer.MIN_VALUE, 1));
+		list.add(new Real(2, 1));
+		list.add(new Real(3, 2));
+		list.add(new Real(Long.MIN_VALUE));
+		list.add(new Real(-1000000, 2));
+		list.add(new Real(1, 1));
+		list.add(new Real(1000, 999));
+		list.add(new Real(1000, 999));
+		list.add(new Real(-1, 2));
+		list.add(new Real(Long.MAX_VALUE));
+		list.add(new Real(-1, 1));
+		list.add(new Real(-100, 2));
+		list.add(new Real(123456, 7));
+		list.add(new Real(0, 7));
+		Collections.sort(list);
+		Assert.assertEquals("[-9223372036854775808, -2147483648, -500000, -50, -1, -1/2, 0, 1/4, 1/3, 1/2, 1, 1000/999, 1000/999, 3/2, 2, 123456/7, 2147483647, 9223372036854775807]", list.toString());
+	}
 
 	@Test
 	public void testRound_1() {
