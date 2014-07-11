@@ -7,6 +7,10 @@ public class CsvSortableDataset extends CsvReadableDataset {
 
 	public void sort(String fieldName, FieldType fieldType, boolean asc) {
 		int fieldIndex = getFieldIndex(fieldName);
+		sort(fieldIndex, fieldType, asc);
+	}
+
+	public void sort(int fieldIndex, FieldType fieldType, boolean asc) {
 		Collections.sort(records, new RecordComparator(fieldIndex, fieldType, asc));
 	}
 
