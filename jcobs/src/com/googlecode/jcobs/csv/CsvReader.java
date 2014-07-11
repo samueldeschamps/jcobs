@@ -14,14 +14,14 @@ import java.util.Map;
 
 /**
  * TODO Support files without Header.
- * TODO Support partial fetch.
+ * TODO Support partial fetch (CsvPartialReader?).
  * TODO Support more field types.
  * TODO recordCount() method.
  * 
  * @author Samuel Y. Deschamps
  *
  */
-public class CsvReadableDataset {
+public class CsvReader {
 
 	public static final char DEFAULT_SEPARATOR = ';';
 	public static final char DEFAULT_DELIMITER = '"';
@@ -37,7 +37,7 @@ public class CsvReadableDataset {
 	protected List<String[]> records = new ArrayList<>();
 	protected int currentIndex = -1;
 
-	public CsvReadableDataset() {
+	public CsvReader() {
 	}
 
 	public void clear() {
@@ -46,7 +46,7 @@ public class CsvReadableDataset {
 		currentIndex = -1;
 	}
 
-	public void loadFromFile(File file) throws IOException {
+	public void readFile(File file) throws IOException {
 		clear();
 		FileReader reader = new FileReader(file);
 		BufferedReader bufReader = new BufferedReader(reader);
@@ -55,9 +55,9 @@ public class CsvReadableDataset {
 			if (line == null) {
 				return;
 			}
-			loadHeader(line);
+			readHeader(line);
 			while ((line = bufReader.readLine()) != null) {
-				loadRecord(line);
+				readRecord(line);
 			}
 		} finally {
 			bufReader.close();
@@ -65,7 +65,7 @@ public class CsvReadableDataset {
 		}
 	}
 
-	private void loadHeader(String line) {
+	private void readHeader(String line) {
 		List<String> fieldNames = readTokens(line);
 		for (String name : fieldNames) {
 			if (name.isEmpty()) {
@@ -75,7 +75,7 @@ public class CsvReadableDataset {
 		}
 	}
 
-	private void loadRecord(String line) {
+	private void readRecord(String line) {
 		List<String> fieldValues = readTokens(line);
 		String[] record = new String[fields.size()];
 		for (int i = 0; i < fieldValues.size(); ++i) {
@@ -121,54 +121,58 @@ public class CsvReadableDataset {
 	}
 
 	public String getString(String fieldName) {
-		return getAsType(fieldName, FieldType.STRING);
+		return getAsType(fieldName, CsvFieldType.STRING);
 	}
 
 	public String getString(int fieldIndex) {
-		return getAsType(fieldIndex, FieldType.STRING);
+		return getAsType(fieldIndex, CsvFieldType.STRING);
 	}
 
 	public Integer getInteger(String fieldName) {
-		return getAsType(fieldName, FieldType.INTEGER);
+		return getAsType(fieldName, CsvFieldType.INTEGER);
 	}
 
 	public Integer getInteger(int fieldIndex) {
-		return getAsType(fieldIndex, FieldType.INTEGER);
+		return getAsType(fieldIndex, CsvFieldType.INTEGER);
 	}
 
 	public Long getLong(String fieldName) {
-		return getAsType(fieldName, FieldType.LONG);
+		return getAsType(fieldName, CsvFieldType.LONG);
 	}
 
 	public Long getLong(int fieldIndex) {
-		return getAsType(fieldIndex, FieldType.LONG);
+		return getAsType(fieldIndex, CsvFieldType.LONG);
 	}
 
 	public Date getDate(String fieldName) {
-		return getAsType(fieldName, FieldType.UTIL_DATE);
+		return getAsType(fieldName, CsvFieldType.UTIL_DATE);
 	}
 
 	public Date getDate(int fieldIndex) {
-		return getAsType(fieldIndex, FieldType.UTIL_DATE);
+		return getAsType(fieldIndex, CsvFieldType.UTIL_DATE);
 	}
 	
 	public int fieldCount() {
 		return fields.size();
 	}
 
-	protected <T> T getAsType(String fieldName, FieldType fieldType) {
+	protected <T> T getAsType(String fieldName, CsvFieldType fieldType) {
 		int fieldIndex = getFieldIndex(fieldName);
 		return getAsType(fieldIndex, fieldType);
 	}
 
 	@SuppressWarnings("unchecked")
-	protected <T> T getAsType(int fieldIndex, FieldType fieldType) {
+	protected <T> T getAsType(int fieldIndex, CsvFieldType fieldType) {
 		String value = records.get(currentIndex)[fieldIndex];
 		return (T) convertValue(value, fieldType);
 	}
 
 	public boolean isNull(String fieldName) {
 		return getString(fieldName) == null;
+	}
+	
+	public boolean isNull(int fieldIndex) {
+		return getString(fieldIndex) == null;
 	}
 
 	public boolean next() {
@@ -208,7 +212,7 @@ public class CsvReadableDataset {
 	}
 
 	@SuppressWarnings("rawtypes")
-	protected Comparable convertValue(String value, FieldType type) {
+	protected Comparable convertValue(String value, CsvFieldType type) {
 		if (value == null) {
 			return null;
 		}

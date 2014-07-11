@@ -3,24 +3,24 @@ package com.googlecode.jcobs.csv;
 import java.util.Collections;
 import java.util.Comparator;
 
-public class CsvSortableDataset extends CsvReadableDataset {
+public class CsvSortableReader extends CsvReader {
 
-	public void sort(String fieldName, FieldType fieldType, boolean asc) {
+	public void sort(String fieldName, CsvFieldType fieldType, boolean asc) {
 		int fieldIndex = getFieldIndex(fieldName);
 		sort(fieldIndex, fieldType, asc);
 	}
 
-	public void sort(int fieldIndex, FieldType fieldType, boolean asc) {
+	public void sort(int fieldIndex, CsvFieldType fieldType, boolean asc) {
 		Collections.sort(records, new RecordComparator(fieldIndex, fieldType, asc));
 	}
 
 	private class RecordComparator implements Comparator<String[]> {
 
 		private int fieldIndex;
-		private FieldType fieldType;
+		private CsvFieldType fieldType;
 		private boolean asc;
 
-		public RecordComparator(int fieldIndex, FieldType fieldType, boolean asc) {
+		public RecordComparator(int fieldIndex, CsvFieldType fieldType, boolean asc) {
 			this.fieldIndex = fieldIndex;
 			this.fieldType = fieldType;
 			this.asc = asc;

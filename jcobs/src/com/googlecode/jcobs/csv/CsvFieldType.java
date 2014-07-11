@@ -1,6 +1,6 @@
 package com.googlecode.jcobs.csv;
 
-public enum FieldType {
+public enum CsvFieldType {
 	
 	STRING, // java.lang.String
 	UTIL_DATE, // java.util.Date
