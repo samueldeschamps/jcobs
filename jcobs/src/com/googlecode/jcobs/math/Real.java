@@ -47,7 +47,7 @@ import java.math.RoundingMode;
  * As {@code Real} class is immutable, every arithmetic operation will create a
  * new object as result instead of modifying the <code>this</code> object state.
  * All methods and constructors for this class throw
- * {@code NullPointerException} when passed a {@code null} object reference for
+ * {@link NullPointerException} when passed a {@code null} object reference for
  * any input parameter.
  * 
  * @author Samuel Y. Deschamps [samueldeschamps at gmail dot com]
