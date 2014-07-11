@@ -5,7 +5,52 @@ import java.math.BigInteger;
 import java.math.RoundingMode;
 
 /**
- * @author Samuel Y. Deschamps [samueldeschamps at gmail dot com] [Brasil]
+ * Immutable, signed real number. A {@code Real} consists of a <code>long</code>
+ * numerator and a <code>long</code> denominator, so it supports any value that
+ * can be represented as a fraction with numerator and denominator values
+ * between <code>Long.MIN_VALUE</code> and <code>Long.MAX_VALUE</code>.
+ * 
+ * <p>
+ * Unlike {@link BigDecimal}, {@code Real} supports infinite repeating decimals
+ * (Ex: 3.333333...) without any lose of information. For example,
+ * <code>10 divide 3</code> is performed without exception and the result is
+ * assured to reach exactly <code>10</code> again if multiplied to
+ * <code>3</code>.
+ * 
+ * <p>
+ * {@code Real} stores the number in its exact form, unlike floating-point data
+ * types like {@link Double} that keeps an approximation for some values.<br>
+ * Reference: <a
+ * href=http://www.exploringbinary.com/why-0-point-1-does-not-exist-in-floating
+ * -point/>http://www.exploringbinary.com/why-0-point-1-does-not-exist-in-
+ * floating -point/</a>
+ * 
+ * <p>
+ * Any value that is not exactly supported by {@code Real} will throw an
+ * {@link ArithmeticException} instead of keeping an approximated value. For
+ * this reason this class is more reliable for currency computations or exact
+ * values math. But it's not recommended for values bigger than
+ * <code>Integer.MAX_VALUE</code>.
+ *
+ * <p>
+ * The {@code Real} class provides operations for arithmetic, comparison,
+ * rounding, hashing, and conversion to/from BigDecimal and primitive numbers
+ * (double, float, long, int, short, byte).
+ * 
+ * <p>
+ * The value is stored always in its most reduced fraction, so there's no way to
+ * represent the same value in a different numerator/denominator pair. Thus,
+ * it's safe to use <code>equals()</code>, <code>hashCode()</code> and use
+ * {@code Real} objects in sets and maps as key.
+ * 
+ * <p>
+ * As {@code Real} class is immutable, every arithmetic operation will create a
+ * new object as result instead of modifying the <code>this</code> object state.
+ * All methods and constructors for this class throw
+ * {@code NullPointerException} when passed a {@code null} object reference for
+ * any input parameter.
+ * 
+ * @author Samuel Y. Deschamps [samueldeschamps at gmail dot com]
  * @since July/2014
  *
  */
@@ -299,11 +344,26 @@ public class Real extends Number implements Comparable<Real> {
 
 	@Override
 	public String toString() {
-		// TODO Show value also as decimal
-		if (isInteger()) {
-			return Long.toString(numerator);
+		StringBuilder sb = new StringBuilder();
+		sb.append(toShortDecimalString(10, RoundingMode.HALF_EVEN));
+		sb.append(" (");
+		sb.append(Long.toString(numerator));
+		sb.append("/");
+		sb.append(Long.toString(denominator));
+		sb.append(")");
+		return sb.toString();
+	}
+
+	public String toShortDecimalString(int maxScale, RoundingMode roundingMode) {
+		BigDecimal decimal = toBigDecimal(maxScale, roundingMode);
+		if (decimal.compareTo(BigDecimal.ZERO) == 0) {
+			return "0";
 		} else {
-			return Long.toString(numerator) + "/" + Long.toString(denominator);
+			decimal = decimal.stripTrailingZeros();
+			if (decimal.scale() < 0) {
+				decimal = decimal.setScale(0);
+			}
+			return decimal.toPlainString();
 		}
 	}
 
