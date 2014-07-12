@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * TODO Support partial fetch (CsvPartialReader?).
+ * TODO Support partial fetch (CsvBigFileReader?).
  * TODO Support more field types.
  * 
  * @author Samuel Y. Deschamps
@@ -163,7 +163,7 @@ public class CsvReader {
 	public Date getDate(int fieldIndex) {
 		return getAsType(fieldIndex, CsvFieldType.UTIL_DATE);
 	}
-	
+
 	public int fieldCount() {
 		return fields.size();
 	}
@@ -175,6 +175,9 @@ public class CsvReader {
 
 	@SuppressWarnings("unchecked")
 	protected <T> T getAsType(int fieldIndex, CsvFieldType fieldType) {
+		if (fieldIndex >= fieldCount) {
+			throw new IllegalArgumentException(String.format("Invalid field index: %d. Max is %s.", fieldIndex, fieldCount - 1));
+		}
 		String value = records.get(currentIndex)[fieldIndex];
 		return (T) convertValue(value, fieldType);
 	}
@@ -182,7 +185,7 @@ public class CsvReader {
 	public boolean isNull(String fieldName) {
 		return getString(fieldName) == null;
 	}
-	
+
 	public boolean isNull(int fieldIndex) {
 		return getString(fieldIndex) == null;
 	}
@@ -194,7 +197,7 @@ public class CsvReader {
 		}
 		return false;
 	}
-	
+
 	public int recordCount() {
 		return records.size();
 	}
@@ -226,15 +229,15 @@ public class CsvReader {
 	public void setDateFormat(String format) {
 		dateFormat = new SimpleDateFormat(format);
 	}
-	
+
 	public boolean isFirstLineHeader() {
 		return firstLineIsHeader;
 	}
-	
+
 	public void setFirstLineIsHeader(boolean firstLineIsHeader) {
 		this.firstLineIsHeader = firstLineIsHeader;
 	}
-	
+
 	@SuppressWarnings("rawtypes")
 	protected Comparable convertValue(String value, CsvFieldType type) {
 		if (value == null) {
