@@ -13,10 +13,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * TODO Support files without Header.
  * TODO Support partial fetch (CsvPartialReader?).
  * TODO Support more field types.
- * TODO recordCount() method.
  * 
  * @author Samuel Y. Deschamps
  *
@@ -32,8 +30,10 @@ public class CsvReader {
 	protected char delimiter = DEFAULT_DELIMITER;
 	protected char delimiterEscape = DEFAULT_DELIMITER_ESCAPE;
 	private SimpleDateFormat dateFormat = new SimpleDateFormat(DEFAULT_DATE_FORMAT);
+	protected boolean firstLineIsHeader = true;
 
 	protected Map<String, Integer> fields = new LinkedHashMap<>();
+	protected int fieldCount = -1;
 	protected List<String[]> records = new ArrayList<>();
 	protected int currentIndex = -1;
 
@@ -43,6 +43,7 @@ public class CsvReader {
 	public void clear() {
 		fields.clear();
 		records.clear();
+		fieldCount = -1;
 		currentIndex = -1;
 	}
 
@@ -55,7 +56,9 @@ public class CsvReader {
 			if (line == null) {
 				return;
 			}
-			readHeader(line);
+			if (firstLineIsHeader) {
+				readHeader(line);
+			}
 			while ((line = bufReader.readLine()) != null) {
 				readRecord(line);
 			}
@@ -66,26 +69,34 @@ public class CsvReader {
 	}
 
 	private void readHeader(String line) {
-		List<String> fieldNames = readTokens(line);
+		List<String> fieldNames = readFragments(line);
 		for (String name : fieldNames) {
 			if (name.isEmpty()) {
 				throw new CsvFormatError("Empty fieldname!");
 			}
 			fields.put(name.toUpperCase(), fields.size());
 		}
+		fieldCount = fields.size();
 	}
 
 	private void readRecord(String line) {
-		List<String> fieldValues = readTokens(line);
-		String[] record = new String[fields.size()];
-		for (int i = 0; i < fieldValues.size(); ++i) {
-			String string = fieldValues.get(i);
-			record[i] = string.isEmpty() ? null : string;
+		List<String> fieldValues = readFragments(line);
+		if (fieldCount == -1) {
+			fieldCount = fieldValues.size();
+		} else {
+			if (fieldValues.size() != fieldCount) {
+				throw new CsvFormatError(String.format("Record with %d fragments. Expecting %d.", fieldValues.size(), fieldCount));
+			}
+		}
+		String[] record = new String[fieldCount];
+		for (int i = 0; i < fieldCount; ++i) {
+			String fragment = fieldValues.get(i);
+			record[i] = fragment.isEmpty() ? null : fragment;
 		}
 		records.add(record);
 	}
 
-	private List<String> readTokens(String line) {
+	private List<String> readFragments(String line) {
 		List<String> result = new ArrayList<>();
 		StringBuilder value = new StringBuilder();
 		boolean insideStr = false;
@@ -112,6 +123,7 @@ public class CsvReader {
 	}
 
 	protected int getFieldIndex(String fieldName) {
+		assert firstLineIsHeader : "For CSV files without header, values must be read by index.";
 		fieldName = fieldName.toUpperCase();
 		Integer fieldIndex = fields.get(fieldName);
 		if (fieldIndex == null) {
@@ -182,6 +194,10 @@ public class CsvReader {
 		}
 		return false;
 	}
+	
+	public int recordCount() {
+		return records.size();
+	}
 
 	public char getSeparator() {
 		return separator;
@@ -210,7 +226,15 @@ public class CsvReader {
 	public void setDateFormat(String format) {
 		dateFormat = new SimpleDateFormat(format);
 	}
-
+	
+	public boolean isFirstLineHeader() {
+		return firstLineIsHeader;
+	}
+	
+	public void setFirstLineIsHeader(boolean firstLineIsHeader) {
+		this.firstLineIsHeader = firstLineIsHeader;
+	}
+	
 	@SuppressWarnings("rawtypes")
 	protected Comparable convertValue(String value, CsvFieldType type) {
 		if (value == null) {
